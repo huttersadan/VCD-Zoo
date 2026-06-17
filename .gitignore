@@ -1,0 +1,26 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+
+# Runtime outputs
+outputs/
+logs/
+
+# Local environments and caches
+.env
+.venv/
+venv/
+.cache/
+
+# Large model/checkpoint files should stay outside the repo.
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+
+# Editor/system files
+.DS_Store
+*.swp
