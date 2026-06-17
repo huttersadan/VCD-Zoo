@@ -335,8 +335,6 @@ def read_mme_items(mme_name):
 
 
 def run_mme(args):
-    if args.model_name == "internvl":
-        raise SystemExit("MME + internvl is not wired for AGLA in the original AGLA scripts.")
     model_pack = load_model(args.model_name, args)
     aux = load_agla_aux(model_pack[2])
     rows, responses = [], []
@@ -346,6 +344,7 @@ def run_mme(args):
         prompt = {
             "llava": f"USER: <image>\n{inst['question']} Answer yes or no only.\nASSISTANT:",
             "blip2": f"USER: {inst['question']} Answer yes or no only.\nASSISTANT:",
+            "internvl": f"<image>\n{inst['question']} Answer yes or no only.",
         }[args.model_name]
         raw_response = generate_response(model_pack, args.model_name, raw_image, image_path, prompt, aux, args)
         response = yes_no_from_text(raw_response)

@@ -16,12 +16,14 @@ declare -a JOBS=(
   "original blip2 mme --mme_name existence"
   "original internvl chair"
   "original internvl pope --type_dataset coco --type_question popular"
+  "original internvl mme --mme_name existence"
   "vcd llava chair"
   "vcd llava mme --mme_name existence"
   "vcd blip2 chair"
   "vcd blip2 pope --type_dataset coco --type_question popular"
   "vcd internvl chair"
   "vcd internvl pope --type_dataset coco --type_question popular"
+  "vcd internvl mme --mme_name existence"
   "avisc llava chair"
   "avisc llava pope --type_dataset coco --type_question popular"
   "avisc llava mme --mme_name existence"
@@ -30,6 +32,7 @@ declare -a JOBS=(
   "avisc blip2 mme --mme_name existence"
   "avisc internvl chair"
   "avisc internvl pope --type_dataset coco --type_question popular"
+  "avisc internvl mme --mme_name existence"
   "agla llava chair"
   "agla llava pope --type_dataset coco --type_question popular"
   "agla llava mme --mme_name existence"
@@ -38,6 +41,7 @@ declare -a JOBS=(
   "agla blip2 mme --mme_name existence"
   "agla internvl chair"
   "agla internvl pope --type_dataset coco --type_question popular"
+  "agla internvl mme --mme_name existence"
 )
 
 pids=()

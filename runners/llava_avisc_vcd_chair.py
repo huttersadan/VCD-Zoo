@@ -52,7 +52,7 @@ prompt = "USER: <image>\nPlease provide a detailed description of the image in 3
 generation_config = GenerationConfig(
         num_beams = 1,
         max_new_tokens = args.max_new_tokens,
-        do_sample = True,
+        do_sample = not args.original,
     )
 batch_size = args.batch_size
 image_paths_all = os.listdir(args.image_folder)

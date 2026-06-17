@@ -13,6 +13,8 @@ from vcd_utils.vcd_sample import evolve_vcd_sampling_llava_true,evolve_vcd_sampl
 import matplotlib.pyplot as plt
 from transformers import LlavaForConditionalGeneration,AutoProcessor
 from transformers import InstructBlipProcessor, InstructBlipForConditionalGeneration
+from transformers import AutoModel, AutoTokenizer
+from internvl.internvl_utils import load_image, get_model_input
 
 import tqdm
 from transformers import GenerationConfig
@@ -61,6 +63,7 @@ parser.add_argument("--masking_scheme", type=str, default="zeros")
 parser.add_argument("--lamb", type=int, default=100)
 parser.add_argument("--model_name", type=str, default='blip2')
 parser.add_argument('--mme_name',type=str,default='existence')
+parser.add_argument("--internvl_model_path",type = str,default="/data/dtt/pretrain_model_or_weight/InternVL2-2B")
 args = parser.parse_args()
 args.mme_path = "/data/dtt/dataset/MME_Benchmark_release_version/" + args.mme_name
 
@@ -78,18 +81,40 @@ if args.model_name == 'blip2':
     processor = InstructBlipProcessor.from_pretrained(model_path)
 
 else:
-    # llava
+    # llava / internvl
     print('Llava loading')
     evolve_vcd_sampling_llava_true()
-    model_path = "/data/dtt/pretrain_model_or_weight/llava-1.5-7b-hf"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    processor = AutoProcessor.from_pretrained(model_path)
-    model = LlavaForConditionalGeneration.from_pretrained(model_path,device_map={"": accelerator.process_index},torch_dtype=torch.bfloat16) # 
-    generation_config = GenerationConfig(
-        num_beams = 1,
-        max_new_tokens = args.max_new_tokens,
-        do_sample = False,
-    )
+    if args.model_name == 'llava':
+        model_path = "/data/dtt/pretrain_model_or_weight/llava-1.5-7b-hf"
+        processor = AutoProcessor.from_pretrained(model_path)
+        model = LlavaForConditionalGeneration.from_pretrained(model_path,device_map={"": accelerator.process_index},torch_dtype=torch.bfloat16) # 
+        generation_config = GenerationConfig(
+            num_beams = 1,
+            max_new_tokens = args.max_new_tokens,
+            do_sample = False,
+        )
+    elif args.model_name == 'internvl':
+        print('InternVL loading')
+        model_path = args.internvl_model_path
+        model = AutoModel.from_pretrained(
+            model_path,
+            torch_dtype=torch.bfloat16,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+            load_in_4bit=True,
+            device_map={"": accelerator.process_index},
+        ).eval()
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
+        img_context_token_id = tokenizer.convert_tokens_to_ids('<IMG_CONTEXT>')
+        model.img_context_token_id = img_context_token_id
+        generation_config = dict(
+            max_new_tokens=args.max_new_tokens,
+            do_sample=False,
+            num_beams=1,
+        )
+    else:
+        raise ValueError("unknown model_name: {}".format(args.model_name))
 accelerator.wait_for_everyone()
 
 # batch inference
@@ -143,24 +168,16 @@ with accelerator.split_between_processes(rs_ls) as single_gpu_question_ls:
         image_id = int((image_path.split('/')[-1])[-10:-4])
         raw_image = Image.open(image_path)
         raw_image = raw_image.convert("RGB")
-        qu = inst['question']
-        # prompt = "USER: <image>\nPlease describe the details in the picture.\nASSISTANT:"
-        qu = "USER: <image>\n{} Answer yes or no only.\nASSISTANT:".format(qu)
-        inputs = processor(images=raw_image, text = qu, return_tensors="pt").to(device, torch.bfloat16)
-
-        # VCD
-        image_tensor = inputs['pixel_values'][0]
-        image_tensor_cd = add_diffusion_noise(image_tensor, 500)
-        images_cd = None if args.original else image_tensor_cd.unsqueeze(0)
-
-
-        # only for llava
-        input_ids_length = inputs['input_ids'].shape[-1]
-
+        question = inst['question']
 
         # inference
         with torch.inference_mode():
             if args.model_name == 'llava':
+                qu = "USER: <image>\n{} Answer yes or no only.\nASSISTANT:".format(question)
+                inputs = processor(images=raw_image, text = qu, return_tensors="pt").to(device, torch.bfloat16)
+                image_tensor = inputs['pixel_values'][0]
+                image_tensor_cd = add_diffusion_noise(image_tensor, 500)
+                images_cd = None if args.original else image_tensor_cd.unsqueeze(0)
                 outputs = model.generate(
                     input_ids=inputs['input_ids'],    
                     pixel_values=inputs['pixel_values'],
@@ -182,7 +199,12 @@ with accelerator.split_between_processes(rs_ls) as single_gpu_question_ls:
                     clean_up_tokenization_spaces=False
                 )[0].strip()
                 output_text = output_texts.split("ASSISTANT:")[-1]
-            else:
+            elif args.model_name == 'blip2':
+                qu = "USER: <image>\n{} Answer yes or no only.\nASSISTANT:".format(question)
+                inputs = processor(images=raw_image, text = qu, return_tensors="pt").to(device, torch.bfloat16)
+                image_tensor = inputs['pixel_values'][0]
+                image_tensor_cd = add_diffusion_noise(image_tensor, 500)
+                images_cd = None if args.original else image_tensor_cd.unsqueeze(0)
                 output_texts = model.generate(
                     **inputs,
                     do_sample=False,
@@ -200,6 +222,23 @@ with accelerator.split_between_processes(rs_ls) as single_gpu_question_ls:
                     #model_name='blip'
                     )
                 output_text  = processor.batch_decode(output_texts, skip_special_tokens=True)[0].strip()
+            elif args.model_name == 'internvl':
+                pixel_values = load_image(image_path,max_num=12).to(torch.bfloat16).cuda()
+                internvl_qu = "<image>\n{} Answer yes or no only.".format(question)
+                model_inputs, eos_token_id = get_model_input(pixel_values,internvl_qu,model,tokenizer)
+                generation_config['eos_token_id'] = eos_token_id
+                images_cd = add_diffusion_noise(pixel_values, 500)
+                images_cd = None if args.original else images_cd
+                outputs = model.generate(
+                    input_ids=model_inputs['input_ids'].cuda(),
+                    pixel_values=pixel_values,
+                    attention_mask=model_inputs['attention_mask'].cuda(),
+                    images_cd=images_cd,
+                    cd_beta=args.cd_beta,
+                    cd_alpha=args.cd_alpha,
+                    **generation_config,
+                )
+                output_text = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
         
         
         # Label list
@@ -208,7 +247,7 @@ with accelerator.split_between_processes(rs_ls) as single_gpu_question_ls:
 
         # write to file
         Image_Name = image_path.split('/')[-1]
-        Question = inst['question']
+        Question = question
         Ground_Truth_Answer = 'Yes' if label == 1 else "No"
         raw_output_text = output_text
         Your_Response = yes_no_from_text(raw_output_text)

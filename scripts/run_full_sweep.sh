@@ -23,11 +23,6 @@ for method in original vcd avisc agla; do
       --limit-samples "$LIMIT" \
       --cuda-visible-devices "$GPUS"
 
-    if [[ "$model" == "internvl" ]]; then
-      echo "skip: method=$method model=$model benchmark=mme is not wired"
-      continue
-    fi
-
     python run_experiment.py \
       --method "$method" \
       --model "$model" \

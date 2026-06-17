@@ -33,9 +33,6 @@ MODELS = {
 POPE_DATASETS = ("coco", "aokvqa", "gqa")
 POPE_QUESTIONS = ("random", "popular", "adversarial")
 MME_NAMES = ("existence", "count", "position", "OCR", "color")
-DEFAULT_HF_ENDPOINT = "https://hf-mirror.com"
-
-
 def find_pope_root() -> Path | None:
     candidates = [
         UNIFIED_ROOT / "pope_dataset",
@@ -60,15 +57,11 @@ def method_args(method: str) -> list[str]:
 
 def script_for(benchmark: str, model: str, method: str) -> Path:
     if method == "agla":
-        if benchmark == "mme" and model == "internvl":
-            raise SystemExit("MME + internvl is not wired for AGLA in the original AGLA scripts.")
         return RUNNERS_ROOT / "agla_runner.py"
     if benchmark == "pope":
         return RUNNERS_ROOT / "pope_vcd_total.py"
     if benchmark == "mme":
-        if model == "internvl":
-            raise SystemExit("MME + internvl is not wired in the current src scripts.")
-        if method == "vcd":
+        if method in {"original", "vcd"}:
             return RUNNERS_ROOT / "vcd" / "vcd_total_mme.py"
         return RUNNERS_ROOT / "avisc" / "avisc_total_mme.py"
     if benchmark == "chair":
@@ -197,7 +190,6 @@ def main() -> int:
         env["CUDA_VISIBLE_DEVICES"] = args.cuda_visible_devices
     if args.limit_samples is not None:
         env["VCD_SAMPLE_LIMIT"] = str(args.limit_samples)
-    env.setdefault("HF_ENDPOINT", DEFAULT_HF_ENDPOINT)
     env["PYTHONPATH"] = str(UNIFIED_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
 
     pope_root = find_pope_root()
@@ -208,8 +200,6 @@ def main() -> int:
     for command in commands:
         if args.limit_samples is not None:
             print(f"# VCD_SAMPLE_LIMIT={args.limit_samples}", flush=True)
-        if env.get("HF_ENDPOINT"):
-            print(f"# HF_ENDPOINT={env['HF_ENDPOINT']}", flush=True)
         print("+ " + shlex.join(command), flush=True)
         result = subprocess.run(command, cwd=str(UNIFIED_ROOT), env=env)
         if result.returncode != 0:

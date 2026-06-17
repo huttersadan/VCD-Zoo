@@ -5,11 +5,19 @@ A unified toolkit for contrastive decoding-based LVLM hallucination mitigation m
 This repository provides a single launcher for running `original`, `VCD`, `AvisC`,
 and `AGLA` on several LVLM backbones and hallucination benchmarks.
 
+The motivation for this repository is experimental fairness and convenience.
+Many hallucination mitigation methods based on contrastive decoding depend on
+modifying the decoding implementation inside HuggingFace Transformers. However,
+the original releases of these methods often use different environments,
+different Transformers versions, and different runner conventions. VCD-Zoo
+collects these methods into one runnable codebase so they can be compared under
+the same environment and execution interface.
+
 ## Supported Settings
 
 Methods:
 
-- `original`
+- `original`: standard greedy search decoding without contrastive decoding.
 - `vcd`
 - `avisc`
 - `agla`
@@ -25,14 +33,6 @@ Benchmarks:
 - `chair`
 - `pope`
 - `mme`
-
-Current coverage:
-
-| Benchmark | LLaVA | InstructBLIP2 / BLIP2 | InternVL |
-| --- | --- | --- | --- |
-| CHAIR | original, VCD, AvisC, AGLA | original, VCD, AvisC, AGLA | original, VCD, AvisC, AGLA |
-| POPE | original, VCD, AvisC, AGLA | original, VCD, AvisC, AGLA | original, VCD, AvisC, AGLA |
-| MME | original, VCD, AvisC, AGLA | original, VCD, AvisC, AGLA | not wired |
 
 ## Environment
 
@@ -56,16 +56,6 @@ pip install diffusers sentencepiece protobuf
 `agla_utils/` monkey-patch generation internals from HuggingFace Transformers.
 If you use a newer Transformers version, you may need to adjust those files to
 match the updated generation APIs.
-
-For servers that cannot access HuggingFace directly, set a mirror before
-running:
-
-```bash
-export HF_ENDPOINT=https://hf-mirror.com
-```
-
-The launcher also sets this mirror by default unless `HF_ENDPOINT` is already
-defined.
 
 ## Data And Model Paths
 
@@ -148,9 +138,7 @@ Results are written under `outputs/`:
 
 ## Notes
 
-- This repository uses plain Python subprocesses, not `accelerate launch`.
 - `--cuda-visible-devices` sets `CUDA_VISIBLE_DEVICES` for the child process.
-- `internvl + mme` is not currently wired.
 - AGLA requires the BLIP image-text matching model used to construct the
   augmented visual input.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GROUP=${1:?Usage: ./scripts/run_group.sh <1|2|3|4> [limit] [log_dir]}
+GROUP=${1:?Usage: ./scripts/run_group.sh <1|2|3|4|5> [limit] [log_dir]}
 LIMIT=${2:-5}
 LOG_DIR=${3:-logs/group${GROUP}}
 
@@ -57,8 +57,16 @@ case "$GROUP" in
       "7 agla internvl pope --type_dataset coco --type_question popular"
     )
     ;;
+  5)
+    JOBS=(
+      "0 original internvl mme --mme_name existence"
+      "1 vcd internvl mme --mme_name existence"
+      "2 avisc internvl mme --mme_name existence"
+      "3 agla internvl mme --mme_name existence"
+    )
+    ;;
   *)
-    echo "GROUP must be 1, 2, 3, or 4" >&2
+    echo "GROUP must be 1, 2, 3, 4, or 5" >&2
     exit 2
     ;;
 esac
