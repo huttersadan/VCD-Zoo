@@ -153,7 +153,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mme_name", choices=MME_NAMES, default="existence")
 
     parser.add_argument("--cuda-visible-devices", default=None)
-    parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "--limit-samples",
         type=int,
@@ -212,8 +211,6 @@ def main() -> int:
         if env.get("HF_ENDPOINT"):
             print(f"# HF_ENDPOINT={env['HF_ENDPOINT']}", flush=True)
         print("+ " + shlex.join(command), flush=True)
-        if args.dry_run:
-            continue
         result = subprocess.run(command, cwd=str(UNIFIED_ROOT), env=env)
         if result.returncode != 0:
             return result.returncode

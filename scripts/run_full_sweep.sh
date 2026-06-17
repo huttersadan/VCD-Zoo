@@ -3,7 +3,6 @@ set -euo pipefail
 
 LIMIT=${1:-5}
 GPUS=${2:-0}
-DRY_RUN=${3:-}
 
 cd "$(dirname "$0")/.."
 
@@ -14,8 +13,7 @@ for method in original vcd avisc agla; do
       --model "$model" \
       --benchmark chair \
       --limit-samples "$LIMIT" \
-      --cuda-visible-devices "$GPUS" \
-      ${DRY_RUN:+"$DRY_RUN"}
+      --cuda-visible-devices "$GPUS"
 
     python run_experiment.py \
       --method "$method" \
@@ -23,8 +21,7 @@ for method in original vcd avisc agla; do
       --benchmark pope \
       --all \
       --limit-samples "$LIMIT" \
-      --cuda-visible-devices "$GPUS" \
-      ${DRY_RUN:+"$DRY_RUN"}
+      --cuda-visible-devices "$GPUS"
 
     if [[ "$model" == "internvl" ]]; then
       echo "skip: method=$method model=$model benchmark=mme is not wired"
@@ -37,7 +34,6 @@ for method in original vcd avisc agla; do
       --benchmark mme \
       --all \
       --limit-samples "$LIMIT" \
-      --cuda-visible-devices "$GPUS" \
-      ${DRY_RUN:+"$DRY_RUN"}
+      --cuda-visible-devices "$GPUS"
   done
 done

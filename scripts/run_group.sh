@@ -4,7 +4,6 @@ set -euo pipefail
 GROUP=${1:?Usage: ./scripts/run_group.sh <1|2|3|4> [limit] [log_dir]}
 LIMIT=${2:-5}
 LOG_DIR=${3:-logs/group${GROUP}}
-DRY_RUN=${4:-}
 
 cd "$(dirname "$0")/.."
 mkdir -p "$LOG_DIR"
@@ -87,7 +86,6 @@ for job in "${JOBS[@]}"; do
     --limit-samples "$LIMIT" \
     --cuda-visible-devices "$gpu" \
     ${extra:-} \
-    ${DRY_RUN:+"$DRY_RUN"} \
     >"$log_file" 2>&1 &
 
   pid=$!
